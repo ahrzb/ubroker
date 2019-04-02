@@ -35,40 +35,60 @@ type core struct {
 }
 
 func (c *core) Delivery(ctx context.Context) (<-chan ubroker.Delivery, error) {
-	deliveryChannel := make(chan (<-chan ubroker.Delivery))
-	err := make(chan error)
-	c.mailBox <- obtainDeliveryCommand{
-		deliveryChannel: deliveryChannel,
-		err:             err,
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+		deliveryChannel := make(chan (<-chan ubroker.Delivery))
+		err := make(chan error)
+		c.mailBox <- obtainDeliveryCommand{
+			deliveryChannel: deliveryChannel,
+			err:             err,
+		}
+		return <-deliveryChannel, <-err
 	}
-	return <-deliveryChannel, <-err
 }
 
 func (c *core) Acknowledge(ctx context.Context, id int) error {
-	err := make(chan error)
-	c.mailBox <- acknowledgeCommand{
-		id:  id,
-		err: err,
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+		err := make(chan error)
+		c.mailBox <- acknowledgeCommand{
+			id:  id,
+			err: err,
+		}
+		return <-err
 	}
-	return <-err
 }
 
 func (c *core) ReQueue(ctx context.Context, id int) error {
-	err := make(chan error)
-	c.mailBox <- reQueueCommand{
-		id:  id,
-		err: err,
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+		err := make(chan error)
+		c.mailBox <- reQueueCommand{
+			id:  id,
+			err: err,
+		}
+		return <-err
 	}
-	return <-err
 }
 
 func (c *core) Publish(ctx context.Context, message ubroker.Message) error {
-	err := make(chan error)
-	c.mailBox <- publishCommand{
-		message: message,
-		err:     err,
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+		err := make(chan error)
+		c.mailBox <- publishCommand{
+			message: message,
+			err:     err,
+		}
+		return <-err
 	}
-	return <-err
 }
 
 func (c *core) Close() error {

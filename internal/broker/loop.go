@@ -131,13 +131,13 @@ func (c *core) handleCommandClosed(command interface{}) {
 		cmd.err <- nil
 	case obtainDeliveryCommand:
 		cmd.deliveryChannel <- nil
-		cmd.err <- errors.Wrap(ubroker.ErrClosed, "Broker is shutting down")
+		cmd.err <- ubroker.ErrClosed
 	case publishCommand:
-		cmd.err <- errors.Wrap(ubroker.ErrClosed, "Broker is shutting down")
+		cmd.err <- ubroker.ErrClosed
 	case reQueueCommand:
-		cmd.err <- errors.Wrap(ubroker.ErrClosed, "Broker is shutting down")
+		cmd.err <- ubroker.ErrClosed
 	case acknowledgeCommand:
-		cmd.err <- errors.Wrap(ubroker.ErrClosed, "Broker is shutting down")
+		cmd.err <- ubroker.ErrClosed
 	default:
 		panic(fmt.Sprintf("Unknown command in mailbox %v", cmd))
 	}
