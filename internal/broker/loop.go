@@ -38,48 +38,43 @@ func (c *core) loop() {
 
 func (c *core) emptyLoop() {
 	for {
-		select {
-		case command := <-c.mailBox:
-			c.handleCommand(command)
-		}
-
 		if c.published.Len() > 0 {
 			c.runningLoop()
 		} else if c.closed {
 			c.closedLoop()
+			return // Terminate the loop
+		} else {
+			c.handleCommand(<-c.mailBox)
 		}
 	}
 }
 
 func (c *core) runningLoop() {
 	for {
-		tip := c.published.Front()
-		tipValue := tip.Value.(ubroker.Delivery)
-
-		select {
-		case command := <-c.mailBox:
-			c.handleCommand(command)
-		case c.delivery <- tipValue:
-			c.inProgress[tipValue.ID] = tipValue
-			c.published.Remove(tip)
-			c.requeueAfterTTL(tipValue.ID)
-		}
-
 		if c.published.Len() < 1 {
-			// Do the empty loop
-			return
+			return // Go back to the empty loop
 		} else if c.closed {
 			c.closedLoop()
+			return // Go back to the empty loop(then terminate)
+		} else {
+			tip := c.published.Front()
+			tipValue := tip.Value.(ubroker.Delivery)
+
+			select {
+			case command := <-c.mailBox:
+				c.handleCommand(command)
+			case c.delivery <- tipValue:
+				c.inProgress[tipValue.ID] = tipValue
+				c.published.Remove(tip)
+				c.requeueAfterTTL(tipValue.ID)
+			}
 		}
 	}
 }
 
 func (c *core) closedLoop() {
-	for {
-		select {
-		case command := <-c.mailBox:
-			c.handleCommandClosed(command)
-		}
+	for command := range c.mailBox {
+		c.handleCommandClosed(command)
 	}
 }
 
